@@ -427,3 +427,102 @@ Se compararon las dos versiones con distintos volúmenes de datos y entregan la 
 El reporte ahora responde al instante con el historial anual, y seguirá haciéndolo aunque las ventas se multipliquen. A futuro, una prueba con pocos datos no avisa de este tipo de problema, así que conviene probar los reportes con volúmenes parecidos a los reales antes de entregarlos.
 
 *Nota: los tiempos corresponden a las pruebas realizadas en el entorno de desarrollo y pueden variar en otro computador. El caso de 1.000.000 de ventas es una estimación.*
+## Comparación: `totalCiudadCadena` y `totalCiudadUnaPasada`
+
+**Comprobación:** con `generarVentas(10000)`, ambas devuelven el mismo valor para Medellín, Bogotá, Cali y Pereira, y también con ciudades escritas con mayúsculas y espacios sobrantes.
+
+### Recorridos y arreglos nuevos
+
+| | `totalCiudadCadena` | `totalCiudadUnaPasada` |
+|---|---|---|
+| Recorridos completos | 4: `map`, `filter`, `map`, `reduce`. Los dos primeros recorren las n ventas; los dos últimos, solo las k que pasan el filtro. | 1 |
+| Elementos visitados | 2n + 2k (en la prueba: 24.836) | n (10.000) |
+| Arreglos grandes nuevos | 3 (uno por `map`, uno por `filter`, otro por el segundo `map`) | 0 |
+| Arreglos pequeños nuevos | 2 por cada venta, porque `normalizarCiudad` usa `split` y `map` | 0 |
+| **Total de arreglos nuevos** | **2n + 5** | **0** |
+
+Además, el primer `map` crea n objetos nuevos (una copia de cada venta con la ciudad normalizada).
+
+### Notación Big O
+
+| | Tiempo | Espacio adicional |
+|---|---|---|
+| `totalCiudadCadena` | O(n) | O(n) |
+| `totalCiudadUnaPasada` | O(n) | O(1) |
+
+- **Tiempo:** las dos son O(n). En la cadena hay 4 recorridos y en la otra 1, pero 4n también crece de forma proporcional a n. La constante es mayor, el crecimiento es el mismo.
+- **Espacio:** la cadena guarda arreglos intermedios cuyo tamaño crece con n (el primer `map` guarda n ventas copiadas), así que usa memoria proporcional a n. La de una pasada usa solo unas pocas variables (`total`, `buscada`), sin importar cuántas ventas haya.
+- Los 2n arreglos pequeños de `split` y `map` no ocupan memoria todos a la vez: cada uno queda descartado enseguida. Cuentan para el trabajo de crearlos (parte del tiempo), no para el pico de memoria.
+
+### Conclusión
+
+Dan el mismo resultado y tienen la misma complejidad de tiempo. La versión en cadena es más fácil de leer paso a paso. La de una pasada es más eficiente con memoria, y por eso la prefiero cuando el volumen de ventas es grande.
+
+## 1. Por qué ambas versiones de `totalCiudad` son O(n) en tiempo
+
+`totalCiudadCadena` recorre arreglos cuatro veces y `totalCiudadUnaPasada` una sola, pero las dos son O(n). La razón son las reglas de simplificación de la notación Big O:
+
+1. **Se eliminan las constantes multiplicativas.** O(n) no describe cuánto tarda, sino **cómo crece** el trabajo cuando n crece. Si el trabajo es 4n, al multiplicar n por 10 se multiplica por 10, igual que con n. Por eso 4n, 2n y 100n son todos O(n).
+2. **Se conserva solo el término que más crece.** En la cadena, las visitas son 2n + 2k, donde k es el número de ventas de esa ciudad y k ≤ n. En el peor caso (todas son de esa ciudad) son 4n, y en el mejor, 2n. En ambos casos queda entre 2n y 4n: O(n).
+
+Comprobación con los datos medidos (n = 10.000, k = 2.418): la cadena visitó 24.836 elementos y la de una pasada 10.000, es decir, unas 2,5 veces más trabajo. Pero si se duplican las ventas, ambas duplican su trabajo. La constante cambia **cuánto** tardan, no **cómo crece** su tiempo.
+
+Esto es distinto al caso de `clientesRecurrentes`, donde el doble ciclo hacía n(n−1)/2 pasos. Ahí el trabajo crece con n², y al multiplicar n por 10 se multiplica por 100. Una constante no puede "arreglar" ese crecimiento, y por eso fue necesario cambiar el algoritmo.
+
+## 2. Complejidad espacial de las funciones del motor
+
+Criterio: cuento la memoria adicional que crea la función (incluido lo que devuelve), sin contar el arreglo de entrada. Uso c = ciudades distintas, p = productos distintos, m = clientes distintos y k = ventas que pasan un filtro. Todos esos valores son menores o iguales que n.
+
+| Función | Memoria adicional | Por qué |
+|---|---|---|
+| `valorVenta` | O(1) | Una multiplicación. |
+| `totalVendido`, `unidadesVendidas` | O(1) | Una sola variable acumuladora. |
+| `ventaMayor` | O(1) | Guarda una referencia a una venta que ya existe, no una copia. |
+| `ticketPromedio` | O(1) | Dos contadores (`total` y `validas`). |
+| `ventasPorCiudad` | O(1) | Una variable y un texto temporal por vuelta. |
+| `totalVendidoM`, `unidadesVendidasM` | O(1) | `reduce` lleva un solo número y no crea arreglos. |
+| `ventasPorCiudadM` | O(k), peor caso O(n) | `filter` crea un arreglo con las ventas de esa ciudad. |
+| `normalizarCiudad` | O(1) respecto a n | Crea arreglos pequeños (las palabras de un nombre), de tamaño independiente de n. |
+| `primeraVenta` | O(1) | No crea nada. |
+| `totalCiudadUnaPasada` | O(1) | Una variable acumuladora. |
+| `totalCiudadCadena` | O(n) | Crea un arreglo de n ventas copiadas y otros dos de tamaño k. |
+| `ventasDelDia` | O(k), peor caso O(n) | `filter` guarda las ventas de ese día. |
+| `totalPorCiudad` | **O(c)** | El objeto resultado tiene una entrada por ciudad distinta. |
+| `unidadesPorProducto` | **O(p)** | Una entrada por producto distinto. |
+| `topProductosPorValor` | **O(p)** | Un objeto de p productos, una lista de p, una copia ordenada de p y el recorte de k. |
+| `clientesRecurrentes` (corregida) | **O(m)** | Un objeto con una entrada por cliente distinto, más la lista de recurrentes. |
+
+### Las dos que pediste revisar
+
+- **`totalPorCiudad`:** no usa memoria "proporcional a las ventas", sino a las **ciudades distintas**. Con 4 ciudades fijas (como en los datos medidos), ocupa lo mismo con 100 ventas que con 100.000, así que en la práctica se comporta como O(1) respecto a n. Pero en el peor caso (cada venta en una ciudad diferente) c = n y sería O(n). Por eso la clasifico como O(c), con c ≤ n.
+- **`topProductosPorValor`:** también depende de los **productos distintos** (5 en los datos), no de n. Además hay un costo oculto: `[...lista]` copia el arreglo para no modificar el original, así que durante la ordenación hay dos listas de p elementos. Sigue siendo O(p), con una constante mayor. En tiempo no es lineal: el `sort` cuesta O(p log p), y el recorrido de las ventas, O(n). El total es O(n + p log p). Como p es pequeño, el recorrido domina.
+
+### Idea clave
+
+- Las funciones que solo **acumulan un número** usan memoria constante.
+- Las que **agrupan** guardan una entrada por grupo: su memoria depende del número de grupos, no del de ventas.
+- Las que usan `filter` o `map` crean **arreglos nuevos** y pagan memoria proporcional a lo que dejan pasar.
+- `clientesRecurrentes` corregida usa más memoria que la original (que solo guardaba la lista de recurrentes) a cambio de pasar de O(n²) a O(n) en tiempo. Es un intercambio de memoria por velocidad, y aquí conviene.
+
+## 3. Decisión: qué versión de `totalCiudad` queda en el motor
+
+**Decisión:** dejo **`totalCiudadUnaPasada`**.
+
+| Criterio | `totalCiudadCadena` | `totalCiudadUnaPasada` |
+|---|---|---|
+| Tiempo | O(n) | O(n) |
+| Memoria adicional | O(n) | O(1) |
+| Recorridos | 4 | 1 |
+| Arreglos nuevos (n = 10.000) | 20.005 | 0 |
+| Legibilidad | Cada paso tiene nombre (normalizar, filtrar, valorar, sumar). | Un ciclo con un `if` y una suma. |
+
+**Justificación:**
+
+- **Legibilidad:** la cadena es más declarativa, pero la versión de una pasada no es difícil de leer: ocho líneas con un ciclo, un `if` y una suma, como las demás funciones del motor (`totalVendido`, `ventasPorCiudad`). La diferencia de legibilidad es pequeña.
+- **Recursos:** la cadena crea una copia de cada venta y 2n arreglos pequeños solo para comparar ciudades. Con un año de historial, eso es memoria y trabajo que no aporta nada al resultado.
+- **Mismo resultado:** probé que dan el mismo valor con 10.000 ventas y con ciudades sucias, así que el cambio no cuesta exactitud.
+- **Quién la usa:** el reporte lo ejecuta la gerente con el historial anual, que es justo donde los recursos importan. La legibilidad la necesita quien mantiene el código, y con esta versión no sale perdiendo.
+
+**Qué hago con la otra:** `totalCiudadCadena` queda solo como referencia para comparar en las pruebas y en las mediciones (`pruebas.js` y `medir.js`), no la usa el reporte.
+
+**Un punto a anotar:** en el motor ya existe `ventasPorCiudad`, que hace casi lo mismo. La diferencia es que `totalCiudadUnaPasada` también junta los espacios repetidos *dentro* del nombre (`"Santa  Marta"` igual a `"Santa Marta"`). Conviene dejar claro cuál usa el reporte y, a futuro, unificar las dos.

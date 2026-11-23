@@ -189,6 +189,30 @@ function clientesRecurrentes(ventas) {
     return recurrentes;
 }
 
+// Solo referencia para pruebas y mediciones. El motor usa totalCiudadUnaPasada.
+function totalCiudadCadena(ventas, ciudad) {
+    const buscada = normalizarCiudad(ciudad);
+    return ventas
+        .map((venta) => ({ ...venta, ciudad: normalizarCiudad(venta.ciudad) }))
+        .filter((venta) => venta.ciudad === buscada)
+        .map((venta) => valorVenta(venta))
+        .reduce((acum, valor) => acum + valor, 0);
+}
+
+function claveCiudad(texto) {
+    return texto.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function totalCiudadUnaPasada(ventas, ciudad) {
+    const buscada = claveCiudad(ciudad);
+    let total = 0;
+    for (const venta of ventas) {
+        if (claveCiudad(venta.ciudad) === buscada) {
+            total += valorVenta(venta);
+        }
+    }
+    return total;
+}
 module.exports = {
     valorVenta,
     totalVendido,
@@ -210,4 +234,6 @@ module.exports = {
     primeraVenta,
     primeraVentaI,
     clientesRecurrentes,
+    totalCiudadCadena,
+    totalCiudadUnaPasada,
 };

@@ -1,5 +1,5 @@
 const { generarVentas } = require("./generador");
-const { nuevoContador, totalVendidoI, ventaMayorI, totalPorCiudadI, primeraVentaI, clientesRecurrentes } = require("./analitica");
+const { nuevoContador, totalVendidoI, ventaMayorI, totalPorCiudadI, primeraVentaI, clientesRecurrentes, totalCiudadCadena, totalCiudadUnaPasada} = require("./analitica");
 
 const tamanos = [100, 1000, 10000, 100000];
 const funciones = [
@@ -87,4 +87,45 @@ for (let i = 0; i < filasTiempo.length; i++) {
 
 console.log("Tiempo de clientesRecurrentes");
 console.table(filasTiempo);
+
+const nDiezMil = 10000;
+const ventasDiezMil = generarVentas(nDiezMil);
+const ciudadesPrueba = ["Medellín", "Bogotá", "Cali", "Pereira"];
+
+console.log("--- Mismo valor con n = " + nDiezMil + " ---");
+for (const c of ciudadesPrueba) {
+  const x = totalCiudadCadena(ventasDiezMil, c);
+  const y = totalCiudadUnaPasada(ventasDiezMil, c);
+  console.log(c.padEnd(9), "cadena:", x, "| una pasada:", y, "| iguales:", x === y);
+}
+
+function contarLlamadas(funcion) {
+  const llamadas = [];
+  const guardadas = {};
+  for (const [objeto, nombre] of [[Array.prototype, "map"], [Array.prototype, "filter"], [Array.prototype, "reduce"], [String.prototype, "split"]]) {
+    guardadas[nombre] = objeto[nombre];
+    objeto[nombre] = function (...args) {
+      llamadas.push({ metodo: nombre, largo: nombre === "split" ? null : this.length });
+      return guardadas[nombre].apply(this, args);
+    };
+  }
+  try {
+    funcion();
+  } finally {
+    Array.prototype.map = guardadas.map;
+    Array.prototype.filter = guardadas.filter;
+    Array.prototype.reduce = guardadas.reduce;
+    String.prototype.split = guardadas.split;
+  }
+  return llamadas;
+}
+
+for (const [nombre, f] of [["totalCiudadCadena", totalCiudadCadena], ["totalCiudadUnaPasada", totalCiudadUnaPasada]]) {
+  const llamadas = contarLlamadas(() => f(ventasDiezMil, "Medellín"));
+  const grandes = llamadas.filter((l) => l.largo !== null && l.largo > 10);
+  const nuevos = llamadas.filter((l) => l.metodo !== "reduce").length;
+  console.log(nombre);
+  console.log("  recorridos grandes:", grandes.map((l) => l.metodo + "(" + l.largo + ")").join(", ") || "ninguno (un for...of)");
+  console.log("  arreglos nuevos creados:", nuevos);
+}
 
