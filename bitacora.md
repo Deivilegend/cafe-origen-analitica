@@ -124,3 +124,41 @@ Primero la función limpia la búsqueda: `"  MEDELLÍN "` pasa a `"medellín"`. 
 ### Conclusión
 
 Las tres trazas coinciden con la salida del programa. Comprobación cruzada: Medellín (356000) + Bogotá (276000) + Cali (185000) + Pereira (168000) = 985000, igual que `totalVendido`.
+
+## Preguntas que responde cada función
+
+Las cinco preguntas de la sesión:
+- **¿Qué recorro?** Qué elementos se visitan uno por uno.
+- **¿Qué filtro?** Qué elementos se descartan o se separan.
+- **¿Qué transformo?** Qué dato se convierte en otro.
+- **¿Qué acumulo?** Qué se va juntando durante el recorrido.
+- **¿Cómo agrupo?** Bajo qué clave se reúnen las ventas.
+
+### Versiones con ciclo `for...of`
+
+| Función | ¿Qué recorro? | ¿Qué filtro? | ¿Qué transformo? | ¿Qué acumulo? | ¿Cómo agrupo? |
+|---|---|---|---|---|---|
+| `valorVenta(venta)` | Nada: recibe una sola venta | No | Venta → `cantidad × precio` | No | No |
+| `totalVendido(ventas)` | Cada venta | No | Venta → su valor, con `valorVenta` | `total`, la suma de valores | No |
+| `unidadesVendidas(ventas)` | Cada venta | No | Venta → su `cantidad` | `unidades`, la suma de cantidades | No |
+| `ventaMayor(ventas)` | Cada venta | No descarta: compara y se queda con la mejor | Venta → su valor, solo para comparar | `mayor`, la mejor venta vista hasta ahora (no es una suma; guarda el registro completo) | No |
+| `ticketPromedio(ventas)` | Cada venta | Solo pasan las de `cantidad > 0` | Venta → su valor | `total` y `validas` (cuántas ventas contaron); al final se divide | No |
+| `ventasPorCiudad(ventas, ciudad)` | Cada venta | Solo pasan las que tienen la ciudad buscada | Ciudad → sin espacios y en minúsculas, para comparar; venta → su valor | `total` de esa ciudad | No: devuelve un solo grupo, el de la ciudad pedida |
+| `totalPorCiudad(ventas)` | Cada venta | No | Ciudad → nombre normalizado (con `normalizarCiudad`); venta → su valor | `totales[ciudad]`, un total por ciudad | Por ciudad normalizada: objeto con una clave por ciudad |
+| `unidadesPorProducto(ventas)` | Cada venta | No | Venta → su `cantidad` | `unidades[producto]`, unidades por producto | Por producto: objeto con una clave por producto |
+| `topProductosPorValor(ventas, k)` | Cada venta; luego la lista de productos | No filtra ventas; al final `slice(0, k)` se queda con los k primeros | Venta → su valor; luego el objeto → lista de `{ producto, valor }` | `valores[producto]`, el dinero por producto | Por producto; después se ordena de mayor a menor (sobre una copia, sin tocar `ventas`) |
+
+### Versiones con métodos de arreglo
+
+| Función | ¿Qué recorro? | ¿Qué filtro? | ¿Qué transformo? | ¿Qué acumulo? | ¿Cómo agrupo? |
+|---|---|---|---|---|---|
+| `totalVendidoM(ventas)` | Cada venta, dentro de `reduce` | No | Venta → su valor | `reduce` lleva la suma en `acum` (empieza en 0) | No |
+| `unidadesVendidasM(ventas)` | Cada venta, dentro de `reduce` | No | Venta → su `cantidad` | `reduce` lleva la suma en `acum` | No |
+| `ventasPorCiudadM(ventas, ciudad)` | Cada venta, primero en `filter` y luego en `reduce` | `filter` deja las de la ciudad buscada | Venta → su valor | `reduce` suma los valores que quedaron | No |
+
+### Idea general
+
+- Con ciclo, las cinco operaciones se ven separadas: el `for...of` recorre, el `if` filtra, la línea con `valorVenta` transforma y el `+=` acumula.
+- Con métodos, cada método hace una parte: `filter` filtra, `map` transforma y `reduce` acumula.
+- Para agrupar uso un objeto: la clave es el grupo (ciudad o producto) y el valor es lo que acumulo en él.
+- Cuando el resultado depende de un orden, como en `topProductosPorValor`, ordeno una copia, nunca el arreglo original.
