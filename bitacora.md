@@ -526,3 +526,162 @@ Criterio: cuento la memoria adicional que crea la función (incluido lo que devu
 **Qué hago con la otra:** `totalCiudadCadena` queda solo como referencia para comparar en las pruebas y en las mediciones (`pruebas.js` y `medir.js`), no la usa el reporte.
 
 **Un punto a anotar:** en el motor ya existe `ventasPorCiudad`, que hace casi lo mismo. La diferencia es que `totalCiudadUnaPasada` también junta los espacios repetidos *dentro* del nombre (`"Santa  Marta"` igual a `"Santa Marta"`). Conviene dejar claro cuál usa el reporte y, a futuro, unificar las dos.
+
+## Método aplicado a `clientesRecurrentes`
+
+Problema: dado el arreglo de ventas, devolver los clientes que compraron más de una vez.
+
+### 1. Entender el problema
+
+**Entradas**
+- `ventas`: un arreglo de ventas. Cada venta es un objeto con (entre otras) la propiedad `cliente`, un texto como `"C01"`.
+
+**Salida**
+- Un arreglo con los códigos de los clientes que aparecen en **más de una venta**.
+
+**Restricciones y decisiones**
+- Cada cliente aparece **una sola vez** en el resultado, aunque haya comprado muchas veces.
+- El orden es el de la **primera aparición** de cada cliente en las ventas.
+- Los códigos se comparan **tal cual**: `"C01"` y `"c01 "` son clientes distintos. No se normalizan.
+- Todas las ventas cuentan, incluso la de cantidad 0 (fila 8). La función no decide qué ventas son válidas: si se quiere excluirlas, se filtran antes de llamarla.
+- No debe modificar el arreglo de entrada.
+- Debe responder en un tiempo razonable con un historial anual (decenas o cientos de miles de ventas).
+
+### 2. Ejemplos y casos borde
+
+| Caso | Entrada (clientes) | n | Salida esperada |
+|---|---|---:|---|
+| Datos del Día 1 | las 12 ventas | 12 | `["C01", "C02", "C03"]` |
+| Arreglo vacío | `[]` | 0 | `[]` |
+| Una sola venta | C01 | 1 | `[]` |
+| Nadie repite | C01, C02, C03 | 3 | `[]` |
+| Un cliente con 3 compras | C01, C01, C01 | 3 | `["C01"]` (una sola vez) |
+| Todas del mismo cliente | C01, C01, C01, C01 | 4 | `["C01"]` |
+| Orden de aparición | C02, C01, C02, C01 | 4 | `["C02", "C01"]` |
+| Mismo cliente escrito distinto | C01, "c01 " | 2 | `[]` (se consideran distintos) |
+| Venta con cantidad 0 | C06 (cantidad 0), C06 (cantidad 2) | 2 | `["C06"]` (la función no filtra) |
+
+Los casos que más pueden fallar son el **un cliente con muchas compras** (que no se repita en la lista) y el **orden**, porque cambian según cómo se escriba la solución.
+
+### 3. Fuerza bruta y su complejidad
+
+**Idea:** comparar cada venta con todas las que vienen después. Si dos son del mismo cliente y ese cliente aún no está en la lista, agregarlo.
+
+```js
+function clientesRecurrentesLento(ventas) {
+  const recurrentes = [];
+  for (let i = 0; i < ventas.length; i++) {
+    for (let j = i + 1; j < ventas.length; j++) {
+      if (ventas[i].cliente === ventas[j].cliente && !recurrentes.includes(ventas[i].cliente)) {
+        recurrentes.push(ventas[i].cliente);
+      }
+    }
+  }
+  return recurrentes;
+}
+```
+
+**Es correcta:** da el resultado esperado en todos los casos de la tabla. Su problema es el costo.
+
+**Complejidad de tiempo:**
+- El doble ciclo hace n(n − 1) / 2 comparaciones: 66 con n = 12, 6 con n = 4, 0 con n = 0 o n = 1.
+- `includes` suma otro recorrido (de la lista de recurrentes) cada vez que dos ventas coinciden. En el peor caso casi duplica el trabajo.
+- Total: **O(n²)**.
+
+**Complejidad de espacio:** **O(r)**, donde r es el número de clientes recurrentes (la lista del resultado).
+
+**Medido:** con 10.000 ventas tardó 455 ms; con 100.000, 63,8 s. Al duplicar n, el tiempo se multiplica por cerca de 4.
+
+### 4. Idea de optimización
+
+**Qué trabajo se repite:** para cada venta se vuelve a buscar, recorriendo las demás, si su cliente aparece de nuevo. Se hace la misma pregunta ("¿este cliente ya salió antes?") una y otra vez, y cada vez se responde mirando todo el arreglo.
+
+**Qué información se puede guardar para no buscarla de nuevo:** cuántas compras lleva cada cliente. Con un objeto `compras` (una entrada por cliente), cada venta se resuelve en un solo paso: se consulta la entrada de su cliente y se le suma 1.
+
+**Idea en dos pasos (ya implementada):**
+1. Recorrer las ventas una sola vez, contando las compras de cada cliente en el objeto.
+2. Recorrer el objeto y quedarse con los clientes que tienen más de 1 compra.
+
+**Complejidad:**
+- Tiempo: **O(n)** (n visitas más las m entradas del objeto, con m ≤ n).
+- Espacio: **O(m)**, donde m es el número de clientes distintos. Se paga memoria para ahorrar tiempo.
+
+**Comprobación:** da la misma salida, en el mismo orden, que la fuerza bruta en todos los casos de la tabla y en 15 conjuntos generados de 2 a 2.000 ventas. Con 100.000 ventas tarda unos 14 ms contra 63,8 s.
+
+**Mejora posterior (solo idea):** guardar los clientes ya vistos entre reportes para procesar solo las ventas nuevas. Está descrita en `RENDIMIENTO.md`, sección "Plan de optimización".
+
+## Intercambio entre tiempo y memoria de `clientesRecurrentes` (Set y Map)
+
+### La idea en palabras simples
+
+La versión original no recuerda nada: cada vez que quiere saber si un cliente ya compró antes, **vuelve a mirar todas las ventas**. La nueva versión **anota en una libreta** (un `Set` o un `Map`) quién ya compró, y consulta esa libreta en un solo paso. Gasta memoria para guardar la libreta, y a cambio ya no necesita repetir las búsquedas.
+
+### Qué se gana y qué se paga
+
+| | Original (doble ciclo) | Nueva (`Set` o `Map`) |
+|---|---|---|
+| Tiempo | O(n²) | O(n) |
+| Memoria adicional | O(r): solo la lista de recurrentes | O(m): un registro por cada cliente distinto |
+| Con 10.000 ventas | 377 a 499 ms | 0,7 a 1 ms |
+| Con 100.000 ventas | 63,8 s | unos 5 ms |
+
+(r = clientes recurrentes y m = clientes distintos, con r ≤ m.)
+
+Se ahorró el trabajo de **buscar** y se pagó el de **recordar**.
+
+### Cuánta memoria cuesta, medida
+
+Con 1.000.000 de ventas hubo 221.550 clientes distintos y 209.853 recurrentes. Memoria retenida por cada estructura (medida con el recolector de basura, es aproximada):
+
+| Estructura | Memoria |
+|---|---:|
+| Lista de recurrentes de la original (r) | 2 MB |
+| `Map` con la cuenta de cada cliente (m) | 7 MB |
+| Dos `Set`, vistos y recurrentes | 10 MB |
+| Objeto con la cuenta de cada cliente | 12 MB |
+| Las 1.000.000 de ventas, para comparar | 140 MB |
+
+Conclusión: la memoria adicional de la nueva solución es de **5 a 10 MB**, un 5 % a 8 % de lo que ya ocupan los datos. A cambio, el tiempo baja de más de un minuto a milisegundos. Es un intercambio muy favorable.
+
+### Por qué la diferencia de memoria es pequeña en estos datos
+
+En los datos generados casi todos los clientes compran más de una vez (209.853 recurrentes de 221.550 clientes), así que la lista de la original (r) es casi tan grande como la libreta de la nueva (m). Si **pocos** clientes repitieran, la original guardaría una lista diminuta, y la nueva seguiría guardando a todos los clientes. Ahí la diferencia de memoria sería mayor, pero el ahorro de tiempo seguiría siendo el mismo.
+
+### Cuándo conviene y cuándo no
+
+- **Conviene** cuando el tiempo es el problema (historial anual) y la memoria sobra. Es el caso del reporte: 140 MB de ventas más unos pocos MB de libreta.
+- **No conviene** si hubiera muy poca memoria disponible y pocos datos: con 12 ventas la versión original es igual de rápida y no necesita libreta.
+- **No se puede evitar el costo de la memoria** si se quiere no buscar de nuevo: para saber que un cliente ya compró hay que recordarlo, así que la memoria crece con el número de clientes distintos (m), aunque no con el número de ventas.
+
+### Costos ocultos de la memoria
+
+- **La memoria también cuesta tiempo.** Con 1.000.000 de ventas, `clientesRecurrentes` tardó 4 a 6 veces más de lo proyectado a partir de 10.000 ventas. Una libreta con cientos de miles de entradas ya no cabe en la memoria rápida del procesador y se redimensiona al crecer.
+- **Entre las dos versiones nuevas:** con 1.000.000 de ventas el `Map` tardó 236 ms y los dos `Set` 394 ms, porque los `Set` mantienen dos conjuntos grandes a la vez (10 MB contra 7 MB). Con 100.000 ventas o menos no se nota diferencia.
+- **Qué guarda cada una:** el `Map` guarda un número por cliente (cuántas compras hizo), lo que sirve para otras preguntas (por ejemplo, quién compró 5 veces o más). Los `Set` solo guardan "ya lo vi" y "es recurrente", que alcanza para esta pregunta pero no para otras.
+
+### Resumen
+
+Se cambió una búsqueda repetida (tiempo cuadrático, poca memoria) por una libreta de clientes (tiempo lineal, memoria proporcional a los clientes distintos). El costo en memoria es de unos pocos MB y el beneficio en tiempo es de varios órdenes de magnitud.
+
+## Clasificación de complejidad: funciones de la campaña de fin de año
+
+n = número de productos del catálogo (`comboRegaloMap`) o de ventas (las otras dos).
+
+| Función | Tiempo | Espacio extra | Por qué |
+|---|---|---|---|
+| `comboRegaloMap(catalogo, valor)` | O(n) | O(n) | Un solo recorrido. Cada `has`, `get` y `set` del Map cuesta O(1). El Map guarda hasta n precios. |
+| `productoEstrellaPorCiudad(ventas)` | O(n) | O(n) | El primer recorrido cuenta las n ventas. El segundo recorre los Maps internos, que en total tienen como máximo n entradas. |
+| `primerClienteUnico(ventas)` | O(n) | O(n) | Dos recorridos seguidos: n + n = 2n, que se simplifica a O(n). El Map guarda un contador por cliente distinto. |
+
+### Mejor y peor caso
+- `comboRegaloMap` termina apenas encuentra la pareja. Mejor caso: O(1) (la pareja está en los dos primeros productos). Peor caso: O(n) (no hay pareja).
+- `primerClienteUnico` puede cortar el segundo recorrido antes, pero el primero siempre es completo. Su mejor caso sigue siendo O(n).
+
+### Notas
+- El espacio real de `productoEstrellaPorCiudad` es O(c · p), con c ciudades y p productos distintos, y nunca pasa de n. En los datos del Día 1 son 4 ciudades y 5 productos.
+- `normalizarCiudad` recorre el texto de la ciudad. Como los nombres son cortos, se toma como O(1).
+
+### Comparación con las versiones lentas
+- `comboRegalo` (fuerza bruta): O(n²) en tiempo, O(1) de espacio extra.
+- `clientesRecurrentes` original: O(n²) en tiempo.
+- Las funciones nuevas bajan a O(n) en tiempo y pagan con O(n) de memoria (intercambio tiempo–memoria).

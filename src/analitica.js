@@ -213,6 +213,119 @@ function totalCiudadUnaPasada(ventas, ciudad) {
     }
     return total;
 }
+
+function clientesRecurrentesSet(ventas) {
+    const vistos = new Set();
+    const recurrentes = new Set();
+    for (const venta of ventas) {
+        if (vistos.has(venta.cliente)) {
+            recurrentes.add(venta.cliente);
+        } else {
+            vistos.add(venta.cliente);
+        }
+    }
+    const resultado = [];
+    for (const cliente of vistos) {
+        if (recurrentes.has(cliente)) {
+            resultado.push(cliente);
+        }
+    }
+    return resultado;
+}
+
+function comprasPorCliente(ventas) {
+    const compras = new Map();
+    for (const venta of ventas) {
+        if (!compras.has(venta.cliente)) {
+            compras.set(venta.cliente, 0);
+        }
+        compras.set(venta.cliente, compras.get(venta.cliente) + 1);
+    }
+    return compras;
+}
+
+function clientesRecurrentesMap(ventas) {
+    const recurrentes = [];
+    for (const [cliente, cantidad] of comprasPorCliente(ventas)) {
+        if (cantidad > 1) {
+            recurrentes.push(cliente);
+        }
+    }
+    return recurrentes;
+}
+
+function comboRegalo(catalogo, valor) {
+    const combos = [];
+    for (let i = 0; i < catalogo.length; i++) {
+        for (let j = i + 1; j < catalogo.length; j++) {
+            if (catalogo[i].precio + catalogo[j].precio === valor) {
+                combos.push({
+                    primero: catalogo[i].producto,
+                    segundo: catalogo[j].producto,
+                    total: catalogo[i].precio + catalogo[j].precio,
+                });
+            }
+        }
+    }
+    return combos;
+}
+
+function comboRegaloMap(catalogo, valor) {
+    const vistos = new Map();
+    for (const item of catalogo) {
+        const complemento = valor - item.precio;
+        if (vistos.has(complemento)) {
+            return {
+                primero: vistos.get(complemento),
+                segundo: item.producto,
+                total: complemento + item.precio,
+            };
+        }
+        if (!vistos.has(item.precio)) {
+            vistos.set(item.precio, item.producto);
+        }
+    }
+    return null;
+}
+
+function productoEstrellaPorCiudad(ventas) {
+    const porCiudad = new Map();
+    for (const venta of ventas) {
+        const ciudad = normalizarCiudad(venta.ciudad);
+        if (!porCiudad.has(ciudad)) {
+            porCiudad.set(ciudad, new Map());
+        }
+        const conteo = porCiudad.get(ciudad);
+        conteo.set(venta.producto, (conteo.get(venta.producto) || 0) + 1);
+    }
+    const resultado = {};
+    for (const [ciudad, conteo] of porCiudad) {
+        let mejor = null;
+        let mejorCantidad = 0;
+        for (const [producto, cantidad] of conteo) {
+            if (cantidad > mejorCantidad) {
+                mejor = producto;
+                mejorCantidad = cantidad;
+            }
+        }
+        resultado[ciudad] = { producto: mejor, apariciones: mejorCantidad };
+    }
+    return resultado;
+}
+
+function primerClienteUnico(ventas) {
+    const compras = new Map();
+    for (const venta of ventas) {
+        compras.set(venta.cliente, (compras.get(venta.cliente) || 0) + 1);
+    }
+    for (const venta of ventas) {
+        if (compras.get(venta.cliente) === 1) {
+            return venta.cliente;
+        }
+    }
+    return null;
+}
+
 module.exports = {
     valorVenta,
     totalVendido,
@@ -236,4 +349,11 @@ module.exports = {
     clientesRecurrentes,
     totalCiudadCadena,
     totalCiudadUnaPasada,
+    clientesRecurrentesSet,
+    comprasPorCliente,
+    clientesRecurrentesMap,
+    comboRegalo,
+    comboRegaloMap,
+    productoEstrellaPorCiudad,
+    primerClienteUnico,
 };
