@@ -1,4 +1,6 @@
-const { ventas } = require("./datos");
+const { ventas, ventasDiarias } = require("./datos");
+const { catalogo } = require("./catalogo");
+
 const {
   valorVenta,
   totalVendido,
@@ -8,10 +10,19 @@ const {
   totalPorCiudad,
   unidadesPorProducto,
   topProductosPorValor,
-  ventasDelDia
+  ventasDelDia,
+  clientesRecurrentesSet,
+  comprasPorCliente,
+  productoEstrellaPorCiudad,
+  comboRegaloMap,
+  parMasCercano,
+  primerClienteUnico,
+  mejorSemana,
 } = require("./analitica");
 
 const ANCHO = 56;
+const TARJETA_REGALO = 87000;
+const DIAS_SEMANA = 7;
 
 function dinero(valor) {
   return "$" + valor.toLocaleString("es-CO", { maximumFractionDigits: 0 });
@@ -88,5 +99,53 @@ seccion("5. RESUMEN POR DÍA");
 resumenDia("2026-09-03");
 console.log("");
 resumenDia("2026-09-07");
+seccion("6. CLIENTES RECURRENTES");
+const recurrentes = clientesRecurrentesSet(ventas);
+const compras = comprasPorCliente(ventas);
+console.log(fila("Clientes con más de una compra", recurrentes.length));
+for (const cliente of recurrentes) {
+  console.log(fila("   " + cliente, compras.get(cliente) + " compras"));
+}
+
+seccion("7. PRODUCTO ESTRELLA POR CIUDAD");
+for (const [ciudad, estrella] of Object.entries(productoEstrellaPorCiudad(ventas))) {
+  console.log(fila(ciudad, estrella.producto + " (" + estrella.apariciones + ")"));
+}
+
+seccion("8. COMBO DE REGALO SUGERIDO");
+console.log(fila("Tarjeta de regalo", dinero(TARJETA_REGALO)));
+const combo = comboRegaloMap(catalogo, TARJETA_REGALO);
+if (combo !== null) {
+  console.log("   " + combo.primero + " + " + combo.segundo);
+  console.log(fila("Total del combo", dinero(combo.total)));
+} else {
+  console.log("   Sin combinación exacta.");
+  const cercano = parMasCercano(catalogo, TARJETA_REGALO);
+  if (cercano !== null) {
+    console.log("   Más cercana sin pasarse: " + cercano.primero + " + " + cercano.segundo);
+    console.log(fila("Total del combo", dinero(cercano.total)));
+  }
+}
+
+seccion("9. CLIENTE PARA CUPÓN");
+const clienteCupon = primerClienteUnico(ventas);
+if (clienteCupon === null) {
+  console.log("   Ningún cliente compró una sola vez.");
+} else {
+  const suVenta = ventas.find((venta) => venta.cliente === clienteCupon);
+  console.log(fila("Primer cliente con una sola compra", clienteCupon));
+  console.log("   Venta " + suVenta.id + " · " + suVenta.fecha + " · " + suVenta.producto);
+}
+
+seccion("10. MEJOR SEMANA DE SEPTIEMBRE");
+const semana = mejorSemana(ventasDiarias, DIAS_SEMANA);
+if (semana === null) {
+  console.log("   No hay suficientes días para calcular la semana.");
+} else {
+  console.log(fila("Días", semana.inicio + " al " + (semana.inicio + DIAS_SEMANA - 1)));
+  console.log(fila("Total de la semana", dinero(semana.total * 1000)));
+  console.log(fila("Promedio diario", dinero(Math.round((semana.total * 1000) / DIAS_SEMANA))));
+}
+
 console.log("");
 console.log("=".repeat(ANCHO));
