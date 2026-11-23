@@ -162,3 +162,26 @@ Las cinco preguntas de la sesión:
 - Con métodos, cada método hace una parte: `filter` filtra, `map` transforma y `reduce` acumula.
 - Para agrupar uso un objeto: la clave es el grupo (ciudad o producto) y el valor es lo que acumulo en él.
 - Cuando el resultado depende de un orden, como en `topProductosPorValor`, ordeno una copia, nunca el arreglo original.
+
+## Errores reportados por la gerente
+
+Comprobación con `node demostrar.js`: la versión v0.1 no presenta ninguno de los dos errores.
+
+### Error 1: "Bogotá aparecía dos veces"
+
+- **Síntoma:** en "ventas por ciudad", una misma ciudad salía en dos filas, con su total partido.
+- **Entrada que lo produce:** ventas de la misma ciudad escritas distinto: `"Bogotá"`, `"Bogotá "` (espacio al final) o `" BOGOTÁ"`. En los 12 datos reales ocurre con `"medellín"` y `"Medellín"` (fila 5).
+- **Hipótesis:** si el programa usa el texto de la ciudad como clave sin limpiarlo, JavaScript trata cada escritura como una clave distinta.
+- **Prueba realizada:** pasé a `totalPorCiudad` tres ventas de Bogotá con tres escrituras distintas, y las 12 ventas reales.
+- **Causa:** falta de normalización de la clave de agrupación (espacios sobrantes y mayúsculas).
+- **Corrección y demostración:** `normalizarCiudad` aplica `trim()`, `toLowerCase()` y pone mayúscula inicial a cada palabra antes de agrupar. Resultado: las tres escrituras de Bogotá dan 1 solo grupo con total 182000, y los datos reales dan 4 ciudades, con Medellín en 356000 (incluye la fila 5).
+- **Limitación:** no une `"Bogota"` (sin tilde) con `"Bogotá"`. Si el archivo de la gerente tiene ese caso, habría que quitar las tildes al normalizar.
+
+### Error 2: "El ticket promedio daba NaN en un día sin ventas"
+
+- **Síntoma:** al filtrar un día sin ventas, el ticket promedio mostraba `NaN`.
+- **Entrada que lo produce:** el arreglo vacío que resulta de `ventasDelDia(ventas, "2026-09-07")`.
+- **Hipótesis:** dividir el total entre la cantidad de ventas sin revisar si es 0 da `0 / 0`, que en JavaScript es `NaN`.
+- **Prueba realizada:** llamé a `ticketPromedio` con un día sin ventas, con `[]` y con un día cuya única venta tiene cantidad 0, y revisé con `Number.isNaN` los días del 2026-09-01 al 2026-09-07.
+- **Causa:** división entre cero, por no definir qué devolver cuando no hay ventas válidas.
+- **Corrección y demostración:** `ticketPromedio` cuenta solo las ventas con `cantidad > 0` y, si no hay ninguna, devuelve `null` antes de dividir. Los tres casos devuelven `null` y ningún día da `NaN`. El reporte lo muestra como "Sin ventas registradas este día".
