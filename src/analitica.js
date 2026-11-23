@@ -114,6 +114,81 @@ function ventasDelDia(ventas, fecha) {
     return ventas.filter((venta) => venta.fecha === buscada);
 }
 
+function nuevoContador() {
+    return { visitas: 0, comparaciones: 0 };
+}
+
+function totalVendidoI(ventas, contador) {
+    let total = 0;
+    for (const venta of ventas) {
+        contador.visitas++;
+        total += valorVenta(venta);
+    }
+    return total;
+}
+
+function ventaMayorI(ventas, contador) {
+    let mayor = null;
+    for (const venta of ventas) {
+        contador.visitas++;
+        if (mayor === null) {
+            mayor = venta;
+        } else {
+            contador.comparaciones++;
+            if (valorVenta(venta) > valorVenta(mayor)) {
+                mayor = venta;
+            }
+        }
+    }
+    return mayor;
+}
+
+function totalPorCiudadI(ventas, contador) {
+    const totales = {};
+    for (const venta of ventas) {
+        contador.visitas++;
+        const ciudad = normalizarCiudad(venta.ciudad);
+        contador.comparaciones++;
+        if (totales[ciudad] === undefined) {
+            totales[ciudad] = 0;
+        }
+        totales[ciudad] += valorVenta(venta);
+    }
+    return totales;
+}
+
+function primeraVenta(ventas) {
+    if (ventas.length === 0) {
+        return null;
+    }
+    return ventas[0];
+}
+
+function primeraVentaI(ventas, contador) {
+    if (ventas.length === 0) {
+        return null;
+    }
+    contador.visitas++;
+    return ventas[0];
+}
+
+function clientesRecurrentes(ventas) {
+    const compras = {};
+    for (const venta of ventas) {
+        if (compras[venta.cliente] === undefined) {
+            compras[venta.cliente] = 0;
+        }
+        compras[venta.cliente]++;
+    }
+    const recurrentes = [];
+    for (const cliente of Object.keys(compras)) {
+        if (compras[cliente] > 1) {
+            recurrentes.push(cliente);
+        }
+    }
+    return recurrentes;
+}
+
 module.exports = {
     valorVenta,
     totalVendido,
@@ -127,5 +202,12 @@ module.exports = {
     totalPorCiudad,
     unidadesPorProducto,
     topProductosPorValor,
-    ventasDelDia
+    ventasDelDia,
+    nuevoContador,
+    totalVendidoI,
+    ventaMayorI,
+    totalPorCiudadI,
+    primeraVenta,
+    primeraVentaI,
+    clientesRecurrentes,
 };
