@@ -326,6 +326,71 @@ function primerClienteUnico(ventas) {
     return null;
 }
 
+function mejorSemanaBruta(dias, k) {
+    if (!Number.isInteger(k) || k <= 0 || k > dias.length) {
+        return null;
+    }
+    let mejorTotal = -Infinity;
+    let mejorInicio = 0;
+    for (let i = 0; i + k <= dias.length; i++) {
+        let suma = 0;
+        for (let j = i; j < i + k; j++) {
+            suma += dias[j];
+        }
+        if (suma > mejorTotal) {
+            mejorTotal = suma;
+            mejorInicio = i;
+        }
+    }
+    return { total: mejorTotal, inicio: mejorInicio + 1 };
+}
+
+function mejorSemana(dias, k) {
+    if (!Number.isInteger(k) || k <= 0 || k > dias.length) {
+        return null;
+    }
+    let suma = 0;
+    for (let i = 0; i < k; i++) {
+        suma += dias[i];
+    }
+    let mejorTotal = suma;
+    let mejorInicio = 0;
+    for (let i = k; i < dias.length; i++) {
+        suma += dias[i] - dias[i - k];
+        if (suma > mejorTotal) {
+            mejorTotal = suma;
+            mejorInicio = i - k + 1;
+        }
+    }
+    return { total: mejorTotal, inicio: mejorInicio + 1 };
+}
+
+function parMasCercano(precios, presupuesto) {
+    const ordenados = [...precios].sort((a, b) => a.precio - b.precio);
+    let i = 0;
+    let j = ordenados.length - 1;
+    let mejor = null;
+    while (i < j) {
+        const suma = ordenados[i].precio + ordenados[j].precio;
+        if (suma > presupuesto) {
+            j--;
+        } else {
+            if (mejor === null || suma > mejor.total) {
+                mejor = {
+                    primero: ordenados[i].producto,
+                    segundo: ordenados[j].producto,
+                    total: suma,
+                };
+            }
+            if (suma === presupuesto) {
+                break;
+            }
+            i++;
+        }
+    }
+    return mejor;
+}
+
 module.exports = {
     valorVenta,
     totalVendido,
@@ -356,4 +421,7 @@ module.exports = {
     comboRegaloMap,
     productoEstrellaPorCiudad,
     primerClienteUnico,
+    mejorSemana,
+    mejorSemanaBruta,
+    parMasCercano,
 };

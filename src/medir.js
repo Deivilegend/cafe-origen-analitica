@@ -129,3 +129,43 @@ for (const [nombre, f] of [["totalCiudadCadena", totalCiudadCadena], ["totalCiud
   console.log("  arreglos nuevos creados:", nuevos);
 }
 
+const { mejorSemanaBruta, mejorSemana } = require("./analitica");
+const { mejorSemanaBruta, mejorSemana } = require("./analitica");
+const { ventasDiarias } = require("./datos");
+
+function diasAlAzar(n) {
+  const dias = [];
+  for (let i = 0; i < n; i++) {
+    dias.push(Math.floor(Math.random() * 1000));
+  }
+  return dias;
+}
+
+function medirMs(funcion, dias, k) {
+  const inicio = performance.now();
+  const resultado = funcion(dias, k);
+  return { resultado, ms: performance.now() - inicio };
+}
+
+console.log(" Septiembre (k = 7) ");
+console.log("bruta     :", mejorSemanaBruta(ventasDiarias, 7));
+console.log("deslizante:", mejorSemana(ventasDiarias, 7));
+
+const dias = diasAlAzar(100000);
+const filas = [];
+for (const k of [7, 100, 1000, 10000]) {
+  const a = medirMs(mejorSemanaBruta, dias, k);
+  const b = medirMs(mejorSemana, dias, k);
+  const igual = a.resultado.total === b.resultado.total && a.resultado.inicio === b.resultado.inicio;
+  filas.push({
+    k,
+    coinciden: igual ? "SI" : "NO",
+    total: b.resultado.total,
+    inicio: b.resultado.inicio,
+    "bruta (ms)": Number(a.ms.toFixed(2)),
+    "deslizante (ms)": Number(b.ms.toFixed(2)),
+  });
+}
+console.log(" 100.000 días al azar ");
+console.table(filas);
+

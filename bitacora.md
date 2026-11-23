@@ -685,3 +685,76 @@ n = número de productos del catálogo (`comboRegaloMap`) o de ventas (las otras
 - `comboRegalo` (fuerza bruta): O(n²) en tiempo, O(1) de espacio extra.
 - `clientesRecurrentes` original: O(n²) en tiempo.
 - Las funciones nuevas bajan a O(n) en tiempo y pagan con O(n) de memoria (intercambio tiempo–memoria).
+
+## Las tres primeras ventanas (k = 7)
+
+Días de septiembre (en miles): 320, 410, 280, 390, 510, 620, 700, 300, 290, 450, ...
+
+```
+Día:      1    2    3    4    5    6    7    8    9   10
+Valor:  320  410  280  390  510  620  700  300  290  450
+
+Ventana 1: [320  410  280  390  510  620  700]  300  290  450   = 3230
+Ventana 2:  320 [410  280  390  510  620  700  300] 290  450    = 3210
+Ventana 3:  320  410 [280  390  510  620  700  300  290] 450    = 3090
+```
+
+| Ventana | Días | Cómo se calcula | Total |
+|---|---|---|---|
+| 1 | 1 a 7 | 320 + 410 + 280 + 390 + 510 + 620 + 700 (suma completa) | 3230 |
+| 2 | 2 a 8 | 3230 + 300 (entra el día 8) − 320 (sale el día 1) | 3210 |
+| 3 | 3 a 9 | 3210 + 290 (entra el día 9) − 410 (sale el día 2) | 3090 |
+
+La versión deslizante suma completa solo la primera ventana. Las demás se calculan con una suma y una resta.
+La mejor ventana de todo el mes es la del día 24 al 30, con 3670 (miles).
+
+## Par más cercano al presupuesto: `parMasCercano` (dos punteros)
+
+### Idea
+Se ordenan los productos por precio. Un puntero `i` empieza en el más barato y otro `j` en el más caro.
+- Si la suma **supera** el presupuesto, el más caro no sirve con nadie más barato que `i` (ya sería menor, pero `i` es el menor posible): se baja `j`.
+- Si la suma **cabe**, se guarda si es la mejor hasta ahora y se sube `i` para buscar una suma mayor.
+- Si la suma es **exactamente** el presupuesto, no se puede mejorar y se termina.
+- Termina cuando `i` y `j` se juntan. Si nunca hubo una suma que cupiera, devuelve `null`.
+
+### Catálogo ordenado
+| Posición | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 |
+|---|---|---|---|---|---|---|---|---|
+| Producto | Filtros | Nariño 250 g | Taza | Huila 500 g | Sierra 500 g | Huila 1 kg | Prensa | Molino |
+| Precio | 18.000 | 26.000 | 35.000 | 42.000 | 45.000 | 79.000 | 95.000 | 120.000 |
+
+### Traza para 100.000
+| Paso | i | j | Suma | ¿Cabe? | Acción | Mejor hasta ahora |
+|---|---|---|---|---|---|---|
+| 1 | 0 (18.000) | 7 (120.000) | 138.000 | No | j baja | ninguno |
+| 2 | 0 (18.000) | 6 (95.000) | 113.000 | No | j baja | ninguno |
+| 3 | 0 (18.000) | 5 (79.000) | 97.000 | Sí | se guarda, i sube | **97.000** (Filtros + Huila 1 kg) |
+| 4 | 1 (26.000) | 5 (79.000) | 105.000 | No | j baja | 97.000 |
+| 5 | 1 (26.000) | 4 (45.000) | 71.000 | Sí | no mejora, i sube | 97.000 |
+| 6 | 2 (35.000) | 4 (45.000) | 80.000 | Sí | no mejora, i sube | 97.000 |
+| 7 | 3 (42.000) | 4 (45.000) | 87.000 | Sí | no mejora, i sube | 97.000 |
+| 8 | 4 | 4 | - | - | i = j, termina | 97.000 |
+
+Resultado: Filtros de papel x100 + Origen Huila 1 kg = 97.000. Se hicieron 7 sumas, no las 28 parejas.
+
+### Resultados de las pruebas
+| Presupuesto | Resultado |
+|---|---|
+| 100.000 | Filtros + Huila 1 kg = 97.000 |
+| 140.000 | Sierra 500 g + Prensa francesa = 140.000 (exacto) |
+| 40.000 | `null` (la pareja más barata, Filtros + Nariño, ya cuesta 44.000) |
+
+### Complejidad
+| Función | Tiempo | Espacio extra |
+|---|---|---|
+| `comboRegalo` (fuerza bruta) | O(n²) | O(1) más el resultado |
+| `comboRegaloMap` | O(n) | O(n) |
+| `parMasCercano` | **O(n log n)** | **O(n)** |
+
+Desglose de `parMasCercano`:
+- **Copiar el arreglo:** O(n) tiempo y O(n) espacio.
+- **Ordenar:** O(n log n) tiempo. Es el paso más caro.
+- **Dos punteros:** O(n) tiempo, porque cada paso mueve `i` hacia arriba o `j` hacia abajo, y como mucho hay n pasos. Usa O(1) de espacio extra.
+- **Total:** O(n log n) + O(n) = O(n log n) en tiempo, y O(n) en espacio por la copia.
+
+`comboRegaloMap` solo sirve para una suma exacta. "Lo más cerca posible sin pasarse" necesita comparar sumas, y para eso hace falta el orden. Si el catálogo ya estuviera ordenado, solo se pagaría el recorrido O(n).

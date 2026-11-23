@@ -188,3 +188,37 @@ comprobar("Dos productos distintos con el mismo precio", comboRegaloMap([{ produ
 for (const valor of [87000, 61000, 60000, 215000, 1000]) {
   comprobar("Coincide con fuerza bruta: " + valor, comboRegaloMap(catalogo, valor) !== null, comboRegalo(catalogo, valor).length > 0);
 }
+
+console.log("--- mejorSemanaBruta y mejorSemana ---");
+for (const [nombre, funcion] of [["bruta", mejorSemanaBruta], ["deslizante", mejorSemana]]) {
+  const r = funcion(ventasDiarias, 7);
+  comprobar(nombre + ": total (k = 7)", r.total, 3670);
+  comprobar(nombre + ": día de inicio (k = 7)", r.inicio, 24);
+  comprobar(nombre + ": k = 1 (mejor día)", funcion(ventasDiarias, 1).total, 720);
+  comprobar(nombre + ": k = 1, día", funcion(ventasDiarias, 1).inicio, 28);
+  comprobar(nombre + ": k = 30 (todo el mes)", funcion(ventasDiarias, 30).total, 14460);
+  comprobar(nombre + ": k mayor que los días", funcion(ventasDiarias, 31), null);
+  comprobar(nombre + ": k = 0", funcion(ventasDiarias, 0), null);
+  comprobar(nombre + ": arreglo vacío", funcion([], 3), null);
+  comprobar(nombre + ": empate, gana el primero", funcion([5, 5, 5], 2).inicio, 1);
+  comprobar(nombre + ": valores negativos", funcion([-3, -1, -2], 2).total, -3);
+}
+
+console.log("--- parMasCercano ---");
+const p100 = parMasCercano(catalogo, 100000);
+comprobar("100.000: primer producto", p100.primero, "Filtros de papel x100");
+comprobar("100.000: segundo producto", p100.segundo, "Origen Huila 1 kg");
+comprobar("100.000: total", p100.total, 97000);
+const p140 = parMasCercano(catalogo, 140000);
+comprobar("140.000: primer producto", p140.primero, "Origen Sierra 500 g");
+comprobar("140.000: segundo producto", p140.segundo, "Prensa francesa");
+comprobar("140.000: total (exacto)", p140.total, 140000);
+comprobar("40.000: sin solución", parMasCercano(catalogo, 40000), null);
+comprobar("87.000: coincide con comboRegalo", parMasCercano(catalogo, 87000).total, 87000);
+comprobar("Presupuesto muy grande: los dos más caros", parMasCercano(catalogo, 500000).total, 215000);
+comprobar("Catálogo vacío", parMasCercano([], 100000), null);
+comprobar("Un solo producto", parMasCercano([{ producto: "A", precio: 10 }], 100), null);
+comprobar("Dos productos con el mismo precio", parMasCercano([{ producto: "A", precio: 5 }, { producto: "B", precio: 5 }], 10).total, 10);
+const antes = catalogo.map((x) => x.producto).join(",");
+parMasCercano(catalogo, 100000);
+comprobar("Catálogo sin modificar tras ordenar", catalogo.map((x) => x.producto).join(","), antes);
