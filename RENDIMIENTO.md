@@ -1,4 +1,4 @@
-# Rendimiento del motor (v0.2)
+# Rendimiento del motor (v1.0)
 
 Este documento resume cuánto trabajo y cuánta memoria usa cada función del motor, qué se proyecta para 1.000.000 de ventas, qué funciones tienen más riesgo cuando los datos crezcan y cuál sería el primer paso de optimización.
 
@@ -9,7 +9,7 @@ Este documento resume cuánto trabajo y cuánta memoria usa cada función del mo
 - **Espacio (Big O):** memoria adicional que crea la función (incluido lo que devuelve), sin contar el arreglo de entrada.
 - **Grupos distintos:** c = ciudades, p = productos, m = clientes, k = ventas de la ciudad buscada, d = ventas del día buscado. Con n = 10.000 hubo c = 4, p = 5, m = 1.000, k = 2.511 y d = 334. Con n = 1.000.000 hubo c = 4, p = 5, m = 175.849 y d = 33.334. Son datos aleatorios, así que cambian en cada ejecución.
 - **Operaciones** = visitas + comparaciones, contadas con las versiones instrumentadas. Las marcadas "(contador)" son conteos exactos.
-- **Tiempos:** medianas de varias ejecuciones, con calentamiento previo, en el entorno de pruebas. En otro computador serán distintos, y entre ejecuciones del mismo computador pueden variar hasta un 30 %. Los valores menores a 0,1 ms son solo un orden de magnitud.
+- **Tiempos:** medianas de varias ejecuciones, con calentamiento previo, en el entorno de pruebas. En otro computador serán distintos, y entre ejecuciones del mismo computador pueden variar bastante (en clientesRecurrentes se vieron valores entre 124 y 640 ms con 1.000.000 de ventas)
 
 ## Tabla de funciones
 
@@ -36,6 +36,19 @@ Este documento resume cuánto trabajo y cuánta memoria usa cada función del mo
 | `normalizarCiudad` | Quita espacios y deja cada palabra con inicial mayúscula. | O(1) respecto a n | O(1) respecto a n | Trabaja sobre un solo nombre (pocas palabras). Cada llamada crea 2 arreglos pequeños. | No medida por separado |
 | `claveCiudad` | Quita espacios y pasa a minúsculas, para comparar ciudades. | O(1) respecto a n | O(1) respecto a n | Solo operaciones sobre un texto; no crea arreglos. | No medida por separado |
 
+### Funciones de la campaña de fin de año (las usa el reporte v1.0)
+
+| Función | Qué hace | Tiempo | Espacio | Justificación | Medido |
+|---|---|---|---|---|---|
+| `clientesRecurrentesSet` | Clientes con más de una compra, con dos `Set` (vistos y repetidos). | O(n) | O(m) | Un recorrido con `has` y `add` de costo O(1), más un recorrido de los m clientes. | 0,42 ms (n = 10.000) |
+| `comprasPorCliente` | `Map` con el número de compras de cada cliente. | O(n) | O(m) | Un recorrido; una entrada por cliente distinto. | 0,48 ms (n = 10.000) |
+| `clientesRecurrentesMap` | Clientes con más de una compra, usando `comprasPorCliente`. | O(n) | O(m) | El recorrido de las ventas más el de los m clientes del Map. | 0,54 ms (n = 10.000) |
+| `productoEstrellaPorCiudad` | Producto con más apariciones en cada ciudad. | O(n) | O(c · p), peor caso O(n) | Un recorrido cuenta con un Map por ciudad; luego se revisan los Maps internos, que en total tienen como máximo n entradas. | 1,80 ms (n = 10.000) |
+| `primerClienteUnico` | Primer cliente, en orden, que aparece una sola vez. | O(n) | O(m) | Dos recorridos (n + n): uno cuenta en un Map y otro busca el primero con una sola compra. | 0,55 ms (n = 10.000) |
+| `comboRegaloMap` | Dos productos que suman exactamente el valor, o `null`. | O(q) | O(q) | Un recorrido; cada consulta del complemento en el Map es O(1). Mejor caso O(1). | 1,08 ms (q = 10.000) |
+| `parMasCercano` | Dos productos con la mayor suma sin pasarse del presupuesto. | O(q log q) | O(q) | Copiar y ordenar cuesta O(q log q) y es el paso más caro; los dos punteros recorren una sola vez (O(q)) con espacio O(1). | 2,41 ms (q = 10.000) |
+| `mejorSemana` | Mayor total de k días seguidos y el día en que empieza (ventana deslizante). | O(n) | O(1) | La primera ventana suma k días; después cada paso suma el día que entra y resta el que sale. | 0,02 ms (k = 7 y k = 1.000, n = 10.000 días) |
+
 ### Funciones de medición
 
 | Función | Qué hace | Tiempo | Espacio | Justificación | Medido con n = 10.000 |
@@ -50,6 +63,8 @@ Este documento resume cuánto trabajo y cuánta memoria usa cada función del mo
 |---|---|---|---|---|---|
 | `totalCiudadCadena` | Lo mismo que `totalCiudadUnaPasada`, con `map`, `filter`, `map` y `reduce`. Se usa para comparar. | O(n) | O(n) | 4 recorridos. Copia las n ventas y crea 2 arreglos pequeños por venta al normalizar. | 2,07 ms; 4 recorridos, 20.005 arreglos nuevos (2n + 5) (contador) |
 | `clientesRecurrentesLento` | Versión original del compañero (en `medir.js`). | **O(n²)** | O(r) | Doble ciclo: compara cada venta con todas las siguientes, y `includes` recorre otra lista. `r` es el número de clientes recurrentes de esa lista. | 49.995.000 comparaciones (n(n−1)/2, calculado); 455 ms |
+| `comboRegalo` | Todas las parejas de productos que suman exactamente el valor (fuerza bruta). | **O(q²)** | O(1) más el resultado | Doble ciclo: q(q−1)/2 parejas. En el peor caso el resultado también puede tener muchas parejas. | 112 ms (q = 10.000, 49.995.000 parejas); 0,002 ms con el catálogo real de 8 |
+| `mejorSemanaBruta` | Lo mismo que `mejorSemana`, sumando cada bloque de k días desde cero. | **O(n · k)** | O(1) | n − k + 1 bloques y k sumas por bloque. Con k proporcional a n llega a O(n²). | 0,09 ms con k = 7; 7,2 ms con k = 1.000 (n = 10.000 días) |
 
 ## Cómo crece el trabajo
 
@@ -136,3 +151,15 @@ Al multiplicar n por 10, las tres primeras multiplican su trabajo por 10 (lineal
 - Que devuelva la misma lista (en el mismo orden) que la versión actual con los 12 datos (C01, C02, C03) y con los datos generados.
 - Medir de nuevo con `medir.js`: que el tiempo por reporte siga la cantidad de ventas nuevas y no el tamaño del historial.
 - Repetir la medición con 1.000.000 de ventas y comparar con los 124 a 252 ms actuales.
+
+## Resumen de optimizaciones
+
+| Problema | Versión lenta | Versión rápida | Cómo se logró | Efecto medido |
+|---|---|---|---|---|
+| Clientes recurrentes | O(n²) | O(n) | Recordar lo ya visto con `Set` o `Map` | 455 ms → 0,4 ms (n = 10.000); con 100.000 ventas, 63,8 s → fracción de segundo |
+| Total de una ciudad | O(n), 4 recorridos y 2n arreglos | O(n), 1 recorrido y 0 arreglos | Fusionar los pasos en una pasada | 2,07 ms → 0,62 ms |
+| Combo de regalo exacto | O(q²) | O(q) | Buscar el complemento (`valor − precio`) en un Map | 112 ms → 1,1 ms (q = 10.000) |
+| Par más cercano al presupuesto | O(q²) probando parejas | O(q log q) | Ordenar y usar dos punteros | 2,4 ms (q = 10.000) |
+| Mejor semana | O(n · k) | O(n) | Ventana deslizante: sumar el que entra y restar el que sale | 7,2 ms → 0,02 ms (k = 1.000) |
+
+En todos los casos hay un intercambio: casi siempre se gasta memoria (Map, Set o copia) para ahorrar tiempo. La ventana deslizante es la excepción, porque ahorra tiempo sin gastar memoria extra.

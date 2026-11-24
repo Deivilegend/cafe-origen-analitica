@@ -758,3 +758,40 @@ Desglose de `parMasCercano`:
 - **Total:** O(n log n) + O(n) = O(n log n) en tiempo, y O(n) en espacio por la copia.
 
 `comboRegaloMap` solo sirve para una suma exacta. "Lo más cerca posible sin pasarse" necesita comparar sumas, y para eso hace falta el orden. Si el catálogo ya estuviera ordenado, solo se pagaría el recorrido O(n).
+
+## Cierre: resumen de los MiniRetos y estrategias de optimización
+
+| MiniReto | Qué construí | Archivos |
+|---|---|---|
+| 1. Explorar los datos | Las 12 ventas como arreglo de objetos, diccionario de datos y casos borde (ciudad con minúscula, cantidad 0). | `datos.js`, `explorar.js` |
+| 2. Funciones con ciclos | `valorVenta`, `totalVendido`, `unidadesVendidas`, `ventaMayor`, `ticketPromedio` y `ventasPorCiudad`, con pruebas de arreglo completo, de un elemento y vacío, y trazas a mano. | `analitica.js`, `pruebas.js` |
+| 3. Métodos de arreglos | Versiones con `reduce` y `filter` y programa que compara ambas versiones con las mismas entradas. | `analitica.js`, `verificar.js` |
+| 4. Agrupar datos | `totalPorCiudad` (con ciudades normalizadas), `unidadesPorProducto` y `topProductosPorValor`. | `analitica.js` |
+| 5. Reporte formateado | Reporte con pesos formateados, secciones alineadas y `ventasDelDia`, con validación de fechas. | `reporte.js`, `analitica.js` |
+| 6. Reporte para la gerente | Reporte ejecutable sin abrir el código, reproducción de errores comunes, revisión automática de NaN y duplicados, README de uso. | `revisar.js`, `demostrar.js`, `README.md`, `reporte.bat` |
+| 7. Medir y clasificar | Generador de ventas al azar, versiones con contador, predicciones antes de medir y clasificación O(1), O(n) y O(n²). | `generador.js`, `medir.js` |
+| 8. Corregir el cuello de botella | `clientesRecurrentes` original O(n²) reproducido, versión O(n), tiempos con n = 1.000 a 16.000 y proyección a 100.000 y 1.000.000. | `analitica.js`, `medir.js` |
+| 9. Informe de rendimiento | `RENDIMIENTO.md` con tabla de todas las funciones, proyección, ranking de riesgos y plan de optimización. | `RENDIMIENTO.md` |
+| 10. Tiempo contra memoria | `totalCiudadCadena` contra `totalCiudadUnaPasada`, y `clientesRecurrentesSet`, `comprasPorCliente` y `clientesRecurrentesMap` con comparación de tiempos y memoria. | `analitica.js`, `medir.js` |
+| 11. Campaña de fin de año | Catálogo, `comboRegalo` y `comboRegaloMap`, `parMasCercano`, `productoEstrellaPorCiudad` y `primerClienteUnico`. | `catalogo.js`, `analitica.js` |
+| 12. Mejor semana y producto final | `mejorSemanaBruta` y `mejorSemana` (ventana deslizante), reporte v1.0 con 10 secciones y opción de n ventas, comparación v0.1 contra v1.0, README y `RENDIMIENTO.md` finales. | `datos.js`, `reporte.js`, `README.md`, `RENDIMIENTO.md` |
+
+### Método que apliqué en cada optimización
+Siempre los mismos cuatro pasos: **1)** entender el problema (entradas, salidas, restricciones); **2)** probar ejemplos y casos borde (vacío, un elemento, empates, sin solución); **3)** resolver por fuerza bruta y anotar su complejidad; **4)** buscar qué trabajo se repite y cómo evitarlo. Antes de dar por buena una versión rápida, la comparé con la lenta con los mismos datos.
+
+| Optimización | Trabajo que se repetía | Estrategia | De → a | Costo |
+|---|---|---|---|---|
+| Clientes recurrentes | Comparar cada venta con todas las siguientes y revisar con `includes` | Recordar lo ya visto con `Set`/`Map` (tabla hash): preguntar "¿ya apareció?" cuesta O(1) | O(n²) → O(n) | Memoria O(m) |
+| Total de una ciudad | Varios recorridos y arreglos intermedios (`map`, `filter`, `map`, `reduce`) | Fusionar los pasos en una sola pasada | O(n), 4 recorridos → O(n), 1 recorrido | Ninguno (gana también en memoria) |
+| Combo de regalo exacto | Probar todas las parejas | Buscar el complemento (`valor − precio`) en un Map de precios ya vistos | O(q²) → O(q) | Memoria O(q) |
+| Par más cercano al presupuesto | Probar todas las parejas, sin poder usar la búsqueda exacta | Ordenar y usar dos punteros: si la suma se pasa baja el mayor; si cabe sube el menor | O(q²) → O(q log q) | Copia y orden (O(q)) |
+| Mejor semana | Volver a sumar k días en cada bloque | Ventana deslizante: reutilizar la suma anterior, sumando el día que entra y restando el que sale | O(n · k) → O(n) | Ninguno (O(1)) |
+| Producto estrella por ciudad | Contar a mano producto por producto en cada ciudad | Conteo de frecuencias con un Map por ciudad, en un solo recorrido | O(n) | Memoria O(c · p) |
+| Primer cliente con una sola compra | Contar las compras de cada cliente cada vez que se revisa uno | Dos recorridos con un Map: uno cuenta y otro busca el primero en el orden original | O(n) | Memoria O(m) |
+
+### Lo que aprendí
+- Casi toda mejora fuerte consiste en **no repetir trabajo**: recordar lo ya visto (Map/Set), reutilizar un resultado anterior (ventana) o ordenar una vez para poder descartar opciones (dos punteros).
+- Optimizar casi siempre cambia **tiempo por memoria**; hay que decirlo y medirlo, no solo suponerlo.
+- La estimación por Big O sirve para saber cómo crece el tiempo, pero los tiempos reales se desvían: hay que medir (por ejemplo, con 100.000 ventas la versión original tardó 63,8 s, más de lo estimado).
+- Las pruebas con casos borde (vacío, un elemento, empates, sin solución) encontraron errores que el caso normal no mostraba (NaN, ciudades duplicadas, objetos con claves como "constructor").
+- Con solo 8 productos o 12 ventas, fuerza bruta y versión optimizada se sienten igual. La diferencia aparece cuando n crece, y por eso medí con datos generados.
